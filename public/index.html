@@ -31,6 +31,7 @@ const topicNames={everyday:'Apresentações e rotina',travel:'Viagem e aeroporto
 function status(s,error=false){$('status').textContent=s;$('status').className='status'+(error?' err':'')}
 function add(text,role){const el=document.createElement('div');el.className='msg '+(role==='assistant'?'bot':'user');const who=document.createElement('div');who.className='who';who.textContent=role==='assistant'?'PROFESSOR':'VOCÊ';el.append(who,document.createTextNode(text));$('messages').append(el);$('messages').scrollTop=$('messages').scrollHeight}
 
+
 function speak(text){
   if(!('speechSynthesis' in window)){
     status('Seu navegador não oferece leitura em voz alta.');
@@ -40,24 +41,25 @@ function speak(text){
   speechSynthesis.cancel();
   lastSpoken = text;
 
-  const u = new SpeechSynthesisUtterance(text);
-  const isPortuguese = /[ãõç]|(?:^|\s)(o|a|os|as|um|uma|que|você|não|para|com|seu|sua|porque|correto|errado|significa|pronúncia|explicação)(?:\s|[,.!?;:]|$)/i.test(text);
-
-  u.lang = isPortuguese ? 'pt-BR' : 'en-US';
-  u.rate = isPortuguese ? 1 : 0.88;
+  const isPortuguese = /[ãõçáéíóúâêô]/i.test(text) ||
+    /\b(você|não|porque|correto|errado|significa|exemplo|frase|palavra|inglês|português|vamos|pode|precisa|está|foi|uma|para|com)\b/i.test(text);
 
   const voices = speechSynthesis.getVoices();
+  const lang = isPortuguese ? 'pt-BR' : 'en-US';
 
-  const voice = isPortuguese
-    ? voices.find(v => v.lang.toLowerCase() === 'pt-br')
-      || voices.find(v => v.lang.toLowerCase().startsWith('pt'))
-    : voices.find(v => v.lang.toLowerCase() === 'en-us')
-      || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+  const voice = voices.find(v => v.lang.toLowerCase() === lang.toLowerCase()) ||
+    voices.find(v => v.lang.toLowerCase().startsWith(isPortuguese ? 'pt' : 'en'));
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = isPortuguese ? 0.92 : 0.88;
+  u.pitch = 1;
 
   if(voice) u.voice = voice;
 
   speechSynthesis.speak(u);
 }
+
 
 function updateLabel(){$('topicLabel').textContent=topicNames[topic]+' • '+$('level').selectedOptions[0].text.split(' — ')[0]}
 async function send(textOverride){const text=(textOverride??$('input').value).trim();if(!text)return;$('input').value='';add(text,'user');history.push({role:'user',content:text});$('send').disabled=true;status('O professor está preparando a resposta…');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history,level:$('level').value,mode:$('mode').value,topic})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível obter resposta.');const reply=data.reply;history.push({role:'assistant',content:reply});add(reply,'assistant');speak(reply);status('Resposta recebida. Continue em inglês ou pergunte em português.')}catch(e){status(e.message+' Se você administra o site, verifique a chave de API no servidor.',true)}finally{$('send').disabled=false;$('input').focus()}}

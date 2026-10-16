@@ -39,7 +39,54 @@ $('send').onclick=()=>send();$('input').addEventListener('keydown',e=>{if(e.key=
 document.querySelectorAll('.topic').forEach(b=>b.onclick=()=>{document.querySelectorAll('.topic').forEach(x=>x.classList.remove('active'));b.classList.add('active');topic=b.dataset.topic;updateLabel();newChat()});
 $('level').onchange=updateLabel;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(SR){recognition=new SR();recognition.lang='en-US';recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{const t=e.results[0][0].transcript;$('input').value=t;status('Entendi: “'+t+'”. Confira e toque em Enviar.');};recognition.onerror=e=>{listening=false;$('mic').classList.remove('listening');$('mic').textContent='🎙️ Falar em inglês';status('Falha no microfone ('+e.error+'). Você pode digitar a frase.',true)};recognition.onend=()=>{listening=false;$('mic').classList.remove('listening');$('mic').textContent='🎙️ Falar em inglês'};$('mic').onclick=()=>{if(listening){recognition.stop();return}try{recognition.start();listening=true;$('mic').classList.add('listening');$('mic').textContent='■ Parar de ouvir';status('Ouvindo… fale uma frase em inglês.')}catch(e){status('Aguarde: o microfone já pode estar ativo.',true)}}}
+
+if(SR){
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript.trim();
+    $('input').value = t;
+
+    if(t){
+      status('Você disse: "' + t + '". Enviando...');
+      $('form').requestSubmit();
+    }
+  };
+
+  recognition.onerror = e => {
+    listening = false;
+    $('mic').classList.remove('listening');
+    $('mic').textContent = '🎙️ Falar em inglês';
+    status('Falha no microfone (' + e.error + '). Você pode digitar a frase.', true);
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    $('mic').classList.remove('listening');
+    $('mic').textContent = '🎙️ Falar em inglês';
+  };
+
+  $('mic').onclick = () => {
+    if(listening){
+      recognition.stop();
+      return;
+    }
+
+    try{
+      recognition.start();
+      listening = true;
+      $('mic').classList.add('listening');
+      $('mic').textContent = '■ Parar de ouvir';
+      status('Ouvindo… fale uma frase em inglês.');
+    }catch(e){
+      status('Aguarde: o microfone já pode estar ativo.', true);
+    }
+  };
+}
+
 else $('mic').onclick=()=>status('Reconhecimento de voz não disponível neste navegador. Digite sua frase.',true);
 fetch('/api/status').then(r=>r.json()).then(d=>{$('connection').textContent=d.configured?'IA conectada':'Falta configurar a IA';if(!d.configured)status('O site está instalado, mas ainda precisa da chave de API no servidor.',true)}).catch(()=>{$('connection').textContent='Sem conexão';status('Não foi possível verificar o servidor.',true)});
 updateLabel();newChat();

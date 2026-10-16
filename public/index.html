@@ -30,7 +30,35 @@ let topic='everyday', history=[], lastSpoken='', listening=false, recognition=nu
 const topicNames={everyday:'Apresentações e rotina',travel:'Viagem e aeroporto',restaurant:'Restaurante',shopping:'Compras',work:'Trabalho',free:'Conversa livre'};
 function status(s,error=false){$('status').textContent=s;$('status').className='status'+(error?' err':'')}
 function add(text,role){const el=document.createElement('div');el.className='msg '+(role==='assistant'?'bot':'user');const who=document.createElement('div');who.className='who';who.textContent=role==='assistant'?'PROFESSOR':'VOCÊ';el.append(who,document.createTextNode(text));$('messages').append(el);$('messages').scrollTop=$('messages').scrollHeight}
-function speak(text){if(!('speechSynthesis'in window)){status('Seu navegador não oferece leitura em voz alta.');return}speechSynthesis.cancel();lastSpoken=text;const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=.88;const voices=speechSynthesis.getVoices();const v=voices.find(x=>x.lang==='en-US')||voices.find(x=>x.lang.startsWith('en'));if(v)u.voice=v;speechSynthesis.speak(u)}
+
+function speak(text){
+  if(!('speechSynthesis' in window)){
+    status('Seu navegador não oferece leitura em voz alta.');
+    return;
+  }
+
+  speechSynthesis.cancel();
+  lastSpoken = text;
+
+  const u = new SpeechSynthesisUtterance(text);
+  const isPortuguese = /[ãõç]|(?:^|\s)(o|a|os|as|um|uma|que|você|não|para|com|seu|sua|porque|correto|errado|significa|pronúncia|explicação)(?:\s|[,.!?;:]|$)/i.test(text);
+
+  u.lang = isPortuguese ? 'pt-BR' : 'en-US';
+  u.rate = isPortuguese ? 1 : 0.88;
+
+  const voices = speechSynthesis.getVoices();
+
+  const voice = isPortuguese
+    ? voices.find(v => v.lang.toLowerCase() === 'pt-br')
+      || voices.find(v => v.lang.toLowerCase().startsWith('pt'))
+    : voices.find(v => v.lang.toLowerCase() === 'en-us')
+      || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+
+  if(voice) u.voice = voice;
+
+  speechSynthesis.speak(u);
+}
+
 function updateLabel(){$('topicLabel').textContent=topicNames[topic]+' • '+$('level').selectedOptions[0].text.split(' — ')[0]}
 async function send(textOverride){const text=(textOverride??$('input').value).trim();if(!text)return;$('input').value='';add(text,'user');history.push({role:'user',content:text});$('send').disabled=true;status('O professor está preparando a resposta…');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history,level:$('level').value,mode:$('mode').value,topic})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível obter resposta.');const reply=data.reply;history.push({role:'assistant',content:reply});add(reply,'assistant');speak(reply);status('Resposta recebida. Continue em inglês ou pergunte em português.')}catch(e){status(e.message+' Se você administra o site, verifique a chave de API no servidor.',true)}finally{$('send').disabled=false;$('input').focus()}}
 function newChat(){history=[];$('messages').innerHTML='';status('Iniciando conversa…');sendGreeting()}
